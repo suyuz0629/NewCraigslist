@@ -29,27 +29,80 @@ namespace :scraper do
 		result = JSON.parse(open(uri).read)
 		
 		# Display result to screen
-		puts JSON.pretty_generate result["postings"]
+		# puts result["postings"].first["images"].first["full"]
 		# puts result["postings"].first["heading"]
 	
 		# Store the result
-		# result["postings"].each do |posting|
-		# 	# Create new post
-		# 	@post = Post.new
-		# 	@post.heading = posting["heading"]
-		# 	@post.body = posting["body"]
-		# 	@post.price = posting["price"]
-		# 	@post.neighborhood = posting["location"]["locality"]
-		# 	@post.external_url = posting["external_url"]
-		# 	@post.timestamp = posting["timestamp"]
-		# 	#@post.annotation = posting["annotation"]
+		result["postings"].each do |posting|
+			# Create new post
+			@post = Post.new
+			@post.heading = posting["heading"]
+			@post.body = posting["body"]
+			@post.price = posting["price"]
+			@post.neighborhood = Location.find_by(code: posting["location"]["locality"]).try(:name)
+			@post.external_url = posting["external_url"]
+			@post.timestamp = posting["timestamp"]
+			@post.bedrooms = posting["annotations"]["bedrooms"] if posting["annotations"]["bedrooms"].present?
+			@post.bathrooms = posting["annotations"]["bathrooms"] if posting["annotations"]["bathrooms"].present?
+			@post.sqft = posting["annotations"]["sqft"] if posting["annotations"]["sqft"].present?
+			@post.cats = posting["annotations"]["cats"] if posting["annotations"]["cats"].present?
+			@post.dogs = posting["annotations"]["dogs"] if posting["annotations"]["dogs"].present?
+			@post.w_d_in_unit = posting["annotations"]["w_d_in_unit"] if posting["annotations"]["w_d_in_unit"].present?
+			@post.street_parking = posting["annotations"]["street_parking"] if posting["annotations"]["street_parking"].present?
+
 	
-		# 	# Save the post
-		# 	@post.save
-		# end
+			# Save the post
+			@post.save
+
+			# Loop over images and save to Image database
+			posting["images"].each do |image|
+				@image = Image.new
+				@image.url = image["full"]
+				@image.post_id = @post.id
+				@image.save
+			end
+		end
 	end
+
+
 	
-	  desc "TODO"
+	  desc "Destroy all posting data"
 	  task destroy_all_posts: :environment do
+	  	Post.destroy_all
+	  end
+
+	  desc "Save neigborhood code in a reference table"
+	  task scrape_neighborhoods: :environment do
+	  	require 'open-uri'
+		require 'json'
+		# Set auth_token
+		auth_token = "75568c365f58526b44be35e9bfd2e5fa"
+		location_url = "http://reference.3taps.com/locations"
+		
+		# Specify request parameters
+		
+		params = {
+			auth_token: auth_token,
+			level: "locality",
+			city: "USA-NYM-BRL"
+		}
+		
+		# Prepare AIP request
+		
+		uri = URI.parse(location_url)
+		uri.query = URI.encode_www_form(params)
+		
+		# Submit request
+		result = JSON.parse(open(uri).read)
+		
+		# Display result to screen
+		# puts JSON.pretty_generate result
+		#  Store the location
+		result["locations"].each do |location|
+			@location = Location.new
+			@location.code = location["code"]
+			@location.name = location["short_name"]
+			@location.save
+		end
 	  end
 end
