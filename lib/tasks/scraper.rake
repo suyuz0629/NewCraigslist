@@ -74,43 +74,50 @@ namespace :scraper do
 
 
 	
-	  desc "Destroy all posting data"
-	  task destroy_all_posts: :environment do
-	  	Post.destroy_all
-	  end
-
-	  desc "Save neigborhood code in a reference table"
-	  task scrape_neighborhoods: :environment do
-	  	require 'open-uri'
-		require 'json'
-		# Set auth_token
-		auth_token = "75568c365f58526b44be35e9bfd2e5fa"
-		location_url = "http://reference.3taps.com/locations"
-		
-		# Specify request parameters
-		
-		params = {
-			auth_token: auth_token,
-			level: "locality",
-			city: "USA-NYM-BRL"
-		}
-		
-		# Prepare AIP request
-		
-		uri = URI.parse(location_url)
-		uri.query = URI.encode_www_form(params)
-		
-		# Submit request
-		result = JSON.parse(open(uri).read)
-		
-		# Display result to screen
-		# puts JSON.pretty_generate result
-		#  Store the location
-		result["locations"].each do |location|
-			@location = Location.new
-			@location.code = location["code"]
-			@location.name = location["short_name"]
-			@location.save
-		end
-	  end
+	 desc "Destroy all posting data"
+	 task destroy_all_posts: :environment do
+	 	Post.destroy_all
+	 end
+	 desc "Save neigborhood code in a reference table"
+	 task scrape_neighborhoods: :environment do
+	 	require 'open-uri'
+	require 'json'
+	# Set auth_token
+	auth_token = "75568c365f58526b44be35e9bfd2e5fa"
+	location_url = "http://reference.3taps.com/locations"
+	
+	# Specify request parameters
+	
+	params = {
+		auth_token: auth_token,
+		level: "locality",
+		city: "USA-NYM-BRL"
+	}
+	
+	# Prepare AIP request
+	
+	uri = URI.parse(location_url)
+	uri.query = URI.encode_www_form(params)
+	
+	# Submit request
+	result = JSON.parse(open(uri).read)
+	
+	# Display result to screen
+	# puts JSON.pretty_generate result
+	#  Store the location
+	result["locations"].each do |location|
+		@location = Location.new
+		@location.code = location["code"]
+		@location.name = location["short_name"]
+		@location.save
+	end
+	 end
+	desc "Discard all data"
+	task discard_old_data: :environment do
+		Post.all.each do |post|
+	 		if post.created_at < 6.hours.ago
+	 			post.destroy
+	 		end
+	 	end
+	 end
 end
